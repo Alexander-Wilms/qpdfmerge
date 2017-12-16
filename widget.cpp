@@ -11,7 +11,7 @@
 Widget::Widget(QWidget *parent)
     : QWidget(parent)
 {
-    fileList = new QSet<QString>();
+    fileList = new QStringList();
 
     mainLayout = new QVBoxLayout(this);
 
@@ -22,9 +22,11 @@ Widget::Widget(QWidget *parent)
     labels << tr("Filename") << tr("Pages") << tr("Size");
     filesTable->setHorizontalHeaderLabels(labels);
     filesTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    filesTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    filesTable->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
     filesTable->verticalHeader()->hide();
     filesTable->setShowGrid(false);
-    filesTable->setContextMenuPolicy(Qt::CustomContextMenu);
+    //filesTable->setContextMenuPolicy(Qt::CustomContextMenu);
 
     mainLayout->addWidget(filesTable);
 
@@ -46,22 +48,49 @@ Widget::Widget(QWidget *parent)
 
 void Widget::saveToFile()
 {
+    // input files
+    QTableWidgetItem* currentItem;
+
+    QString currentPath;
+
+    QAbstractItemModel* model = filesTable->model();
+    QModelIndex index;
+
+    for( int row = 0; row < model->rowCount(); ++row )
+    {
+
+
+        //index = model->index(row, 0, QModelIndex());
+        model->data(model->index(row,0), Qt::DisplayRole);
+        fileList->append(QDir::toNativeSeparators(filesTable->item(row,0)->text()));
+        std::cout << "bla: " << filesTable->item(row,0)->text().toUtf8().constData() << std::endl;
+    }
+
+    std::cout << "input files " << fileList->join(" ").toStdString() << std::endl;
+
+    // output file
     QFileDialog dialog(this);
     dialog.setAcceptMode(QFileDialog::AcceptSave);
     dialog.setFileMode(QFileDialog::AnyFile);
 
     QString fileName;
 
-    fileName = dialog.getSaveFileName(this, tr("Save File"),
+    fileName = QDir::toNativeSeparators(dialog.getSaveFileName(this, tr("Save File"),
                                     "",
-                                    tr("PDFs (*.pdf)"));
+                                    tr("PDFs (*.pdf)")));
 
     std::cout << "Saving as " << fileName.toUtf8().constData() << std::endl;
 
     QProcess process;
+    process.setProcessChannelMode(QProcess::ForwardedChannels);
+
     QStringList args;
     args << fileName;
-    process.start("pdfunite", QStringList() << "test.pdf");
+    fileList->append(args);
+
+    std::cout << "all args " << fileList->join(" ").toStdString() << std::endl;
+    process.startDetached("pdfunite", QStringList() << *fileList);
+
 }
 
 void Widget::addFiles()
@@ -90,7 +119,6 @@ void Widget::addFiles()
 
             document = Poppler::Document::load(fileName);
             numPages = document->numPages();
-            std::cout << numPages << std::endl;
             QTableWidgetItem *pagesItem = new QTableWidgetItem(tr("%1").arg(numPages));
             pagesItem->setData(Qt::UserRole + 1, QVariant(numPages));
             pagesItem->setToolTip(toolTip);

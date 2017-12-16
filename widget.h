@@ -22,7 +22,7 @@ private:
     QPushButton* loadButton;
     QPushButton* removeButton;
     QHBoxLayout* buttonLayout;
-    QSet<QString>* fileList;
+    QStringList* fileList;
 private slots:
     void saveToFile();
     void removeFiles();
